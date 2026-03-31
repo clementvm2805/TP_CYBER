@@ -1,0 +1,177 @@
+{
+  "metadata": {
+    "project": "TechnoSite Industrie — Cybersécurité M2",
+    "version": "1.0",
+    "date": "2026-03-26",
+    "author": "[Nom Étudiant(s)]",
+    "description": "Règles de corrélation SIEM pour environnement IT/OT convergent",
+    "compatible_with": ["Wazuh", "ELK/OpenSearch", "Splunk", "QRadar"]
+  },
+  "rules": [
+    {
+      "id": "R-001",
+      "title": "Brute force AD — Echecs répétés d'authentification",
+      "severity": "high",
+      "mitre_attack": { "tactic": "TA0006", "technique": "T1110" },
+      "source": "windows_security",
+      "event_ids": [4625],
+      "condition": { "count": ">=5", "timeframe": "10m", "group_by": "TargetUserName" },
+      "action": "alert",
+      "response": "Verrouiller le compte. Investiguer la source IP."
+    },
+    {
+      "id": "R-002",
+      "title": "Connexion VPN depuis géolocalisation inhabituelle",
+      "severity": "high",
+      "mitre_attack": { "tactic": "TA0001", "technique": "T1133" },
+      "source": "openvpn_logs",
+      "condition": { "field": "geoip.country_code", "not_in": ["FR", "BE", "CH", "DE", "LU"] },
+      "action": "alert",
+      "response": "Suspendre la session VPN. Vérifier auprès de l'utilisateur."
+    },
+    {
+      "id": "R-003",
+      "title": "Création de compte administrateur non planifiée",
+      "severity": "critical",
+      "mitre_attack": { "tactic": "TA0003", "technique": "T1136.002" },
+      "source": "windows_security",
+      "event_ids": [4720, 4728, 4732],
+      "condition": { "field": "TargetGroup", "contains": ["Domain Admins", "Administrators"] },
+      "action": "alert_and_block",
+      "response": "Désactiver le compte. Auditer l'administrateur source."
+    },
+    {
+      "id": "R-004",
+      "title": "Trafic Modbus depuis IP non autorisée",
+      "severity": "critical",
+      "mitre_attack": { "tactic": "TA0008", "technique": "T0886" },
+      "source": "ids_ot_suricata",
+      "condition": {
+        "protocol": "modbus",
+        "dst_port": 502,
+        "src_ip_not_in": ["10.20.20.1", "10.20.20.2", "10.20.20.10", "10.20.20.11"]
+      },
+      "action": "alert_and_block",
+      "response": "Bloquer l'IP. Isoler le segment OT. Procédure incident OT."
+    },
+    {
+      "id": "R-005",
+      "title": "Écriture Modbus hors plage de valeurs normales",
+      "severity": "critical",
+      "mitre_attack": { "tactic": "TA0040", "technique": "T0836" },
+      "source": "ids_ot_suricata",
+      "condition": {
+        "modbus_function": [6, 16],
+        "register_value_ranges": {
+          "register_100_rpm": { "min": 0, "max": 5000 },
+          "register_200_torque": { "min": 0, "max": 150 },
+          "register_300_temp": { "min": 10, "max": 80 }
+        }
+      },
+      "action": "alert_and_block",
+      "response": "Bloquer la session. Vérifier l'état physique du PLC."
+    },
+    {
+      "id": "R-006",
+      "title": "Modification de firmware PLC",
+      "severity": "critical",
+      "mitre_attack": { "tactic": "TA0040", "technique": "T0839" },
+      "source": "scada_logs",
+      "condition": { "event_type": "plc_program_download", "plc_model": "S7-1500" },
+      "action": "alert_and_block",
+      "response": "Isoler le PLC. Comparer firmware avec version de référence."
+    },
+    {
+      "id": "R-007",
+      "title": "Exécution de Mimikatz / dump credentials",
+      "severity": "critical",
+      "mitre_attack": { "tactic": "TA0006", "technique": "T1003.001" },
+      "source": "edr_endpoint",
+      "condition": {
+        "or": [
+          { "process_name_in": ["mimikatz.exe", "procdump.exe"] },
+          { "command_line_contains": ["sekurlsa", "lsadump", "lsass.dmp"] },
+          { "target_process": "lsass.exe", "access_rights": "0x1010" }
+        ]
+      },
+      "action": "alert_and_isolate",
+      "response": "Isoler le poste. Capturer la mémoire. Réinitialiser les comptes."
+    },
+    {
+      "id": "R-008",
+      "title": "Connexion vers IP/domaine C2 connu",
+      "severity": "critical",
+      "mitre_attack": { "tactic": "TA0011", "technique": "T1071" },
+      "source": "firewall_dns_proxy",
+      "condition": {
+        "or": [
+          { "dst_ip_in": "threat_intel_ioc_list" },
+          { "dns_query_in": "threat_intel_domain_list" }
+        ]
+      },
+      "action": "alert_and_block",
+      "response": "Bloquer la connexion. Identifier le poste. Scanner avec EDR."
+    },
+    {
+      "id": "R-009",
+      "title": "Exfiltration — Volume sortant anormal",
+      "severity": "high",
+      "mitre_attack": { "tactic": "TA0010", "technique": "T1048" },
+      "source": "firewall_netflow",
+      "condition": {
+        "direction": "outbound",
+        "bytes_sum_gt": 524288000,
+        "timeframe": "1h",
+        "group_by": "src_ip"
+      },
+      "action": "alert",
+      "response": "Identifier les flux. Vérifier si transfert légitime."
+    },
+    {
+      "id": "R-010",
+      "title": "Client MQTT non autorisé sur broker IoT",
+      "severity": "high",
+      "mitre_attack": { "tactic": "TA0009", "technique": "T0801" },
+      "source": "mqtt_broker_logs",
+      "condition": {
+        "event": "client_connect",
+        "client_id_not_in": [
+          "sensor_temp_01", "sensor_temp_02",
+          "sensor_vib_01", "sensor_vib_02",
+          "sensor_press_01", "scada_subscriber", "historian_01"
+        ]
+      },
+      "action": "alert",
+      "response": "Bloquer le client. Identifier l'IP source."
+    },
+    {
+      "id": "R-011",
+      "title": "Accès caméras IP depuis VLAN non autorisé",
+      "severity": "medium",
+      "mitre_attack": { "tactic": "TA0007", "technique": "T1018" },
+      "source": "firewall_switch",
+      "condition": {
+        "dst_port_in": [80, 161, 443],
+        "dst_ip_in": "camera_ip_list",
+        "src_vlan_not_in": [99]
+      },
+      "action": "alert",
+      "response": "Bloquer l'accès. Vérifier segmentation VLAN."
+    },
+    {
+      "id": "R-012",
+      "title": "Tentative de clonage de badge RFID",
+      "severity": "high",
+      "mitre_attack": { "tactic": "TA0001", "technique": "T0866" },
+      "source": "access_control_rfid",
+      "condition": {
+        "or": [
+          { "event": "duplicate_badge_id" },
+          { "event": "unknown_badge_id", "count_gte": 3, "timeframe": "5m" }
+        ]
+      },
+      "action": "alert",
+      "response": "Verrouiller le portique. Alerter sécurité physique."
+    }
+  ]
+}

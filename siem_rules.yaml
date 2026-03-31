@@ -1,0 +1,225 @@
+# ============================================================================
+# TechnoSite Industrie — Règles SIEM (Wazuh / ELK / Splunk compatible)
+# Projet Cybersécurité M2 — Mars 2026
+# ============================================================================
+# Format: Sigma-like rules pour intégration SIEM
+# Référence: MITRE ATT&CK for ICS + Enterprise
+# ============================================================================
+
+rules:
+  # ──────────────────────────────────────────────────────
+  # DÉTECTION — Authentification & Identité
+  # ──────────────────────────────────────────────────────
+  - id: R-001
+    title: "Brute force AD — Echecs répétés d'authentification"
+    description: "Détecte plus de 5 tentatives d'authentification échouées en 10 minutes sur un même compte Active Directory."
+    severity: high
+    mitre_attack:
+      tactic: TA0006 - Credential Access
+      technique: T1110 - Brute Force
+    source: windows_security
+    event_ids: [4625]
+    condition:
+      count: ">= 5"
+      timeframe: "10m"
+      group_by: "TargetUserName"
+    action: alert
+    response: "Verrouiller le compte temporairement. Investiguer la source IP. Notifier le SOC."
+    false_positive: "Utilisateur ayant oublié son mot de passe. Script avec credentials expirés."
+
+  - id: R-002
+    title: "Connexion VPN depuis géolocalisation inhabituelle"
+    description: "Détecte une connexion VPN réussie depuis un pays non référencé dans la baseline géographique."
+    severity: high
+    mitre_attack:
+      tactic: TA0001 - Initial Access
+      technique: T1133 - External Remote Services
+    source: openvpn_logs
+    condition:
+      field: "geoip.country_code"
+      not_in: ["FR", "BE", "CH", "DE", "LU"]
+      event: "connection_established"
+    action: alert
+    response: "Suspendre la session VPN. Contacter l'utilisateur pour vérification. Révoquer le certificat si compromission confirmée."
+    false_positive: "Déplacement professionnel non déclaré."
+
+  - id: R-003
+    title: "Création de compte administrateur non planifiée"
+    description: "Détecte la création d'un nouveau compte dans les groupes administrateurs du domaine AD."
+    severity: critical
+    mitre_attack:
+      tactic: TA0003 - Persistence
+      technique: T1136.002 - Create Account: Domain Account
+    source: windows_security
+    event_ids: [4720, 4728, 4732]
+    condition:
+      field: "TargetGroup"
+      contains: ["Domain Admins", "Administrators", "Enterprise Admins"]
+    action: alert_and_block
+    response: "Désactiver le compte immédiatement. Auditer l'ensemble des actions de l'administrateur source. Escalader au RSSI."
+    false_positive: "Création planifiée dans le cadre d'un changement (ticket ITSM)."
+
+  # ──────────────────────────────────────────────────────
+  # DÉTECTION — Réseau OT / Industriel
+  # ──────────────────────────────────────────────────────
+  - id: R-004
+    title: "Trafic Modbus depuis une IP non autorisée"
+    description: "Détecte du trafic Modbus/TCP (port 502) provenant d'une adresse IP non référencée dans la whitelist OT."
+    severity: critical
+    mitre_attack:
+      tactic: TA0008 - Lateral Movement (ICS)
+      technique: T0886 - Remote Services
+    source: ids_ot_suricata
+    condition:
+      protocol: "modbus"
+      dst_port: 502
+      src_ip:
+        not_in: ["10.20.20.1", "10.20.20.2", "10.20.20.10", "10.20.20.11"]
+    action: alert_and_block
+    response: "Bloquer l'IP source au firewall industriel. Isoler le segment OT. Déclencher la procédure de réponse à incident OT."
+    false_positive: "Nouveau poste HMI non encore référencé."
+
+  - id: R-005
+    title: "Écriture Modbus hors plage de valeurs normales"
+    description: "Détecte une commande d'écriture de registre Modbus (FC 06/16) avec une valeur dépassant les seuils opérationnels définis."
+    severity: critical
+    mitre_attack:
+      tactic: TA0040 - Impact (ICS)
+      technique: T0836 - Modify Parameter
+    source: ids_ot_suricata
+    condition:
+      modbus_function: [6, 16]
+      register_value:
+        range_violation:
+          register_100: { min: 0, max: 5000 }   # Vitesse moteur (RPM)
+          register_200: { min: 0, max: 150 }     # Couple (Nm)
+          register_300: { min: 10, max: 80 }     # Température consigne (°C)
+    action: alert_and_block
+    response: "Bloquer immédiatement la session Modbus. Vérifier l'état physique du PLC. Comparer avec la dernière configuration valide."
+    false_positive: "Changement de recette de production (nécessite validation opérateur)."
+
+  - id: R-006
+    title: "Modification de firmware PLC détectée"
+    description: "Détecte une opération de téléchargement de programme ou de firmware vers un automate Siemens S7."
+    severity: critical
+    mitre_attack:
+      tactic: TA0040 - Impact (ICS)
+      technique: T0839 - Module Firmware
+    source: scada_logs
+    condition:
+      event_type: "plc_program_download"
+      plc_model: "S7-1500"
+    action: alert_and_block
+    response: "Isoler le PLC du réseau. Comparer le firmware avec la version de référence. Restaurer si modification non autorisée."
+    false_positive: "Maintenance programmée avec changement validé (ticket GMAO)."
+
+  # ──────────────────────────────────────────────────────
+  # DÉTECTION — Malware & Post-Exploitation
+  # ──────────────────────────────────────────────────────
+  - id: R-007
+    title: "Exécution de Mimikatz / outil de dump de credentials"
+    description: "Détecte l'exécution de Mimikatz, ProcDump, ou tout outil de dump de mémoire LSASS."
+    severity: critical
+    mitre_attack:
+      tactic: TA0006 - Credential Access
+      technique: T1003.001 - OS Credential Dumping: LSASS Memory
+    source: edr_endpoint
+    condition:
+      or:
+        - process_name: ["mimikatz.exe", "procdump.exe", "procdump64.exe"]
+        - command_line_contains: ["sekurlsa", "lsadump", "lsass.dmp", "comsvcs.dll MiniDump"]
+        - target_process: "lsass.exe"
+          access_rights: "0x1010"
+    action: alert_and_isolate
+    response: "Isoler le poste du réseau (containment EDR). Capturer la mémoire volatile. Réinitialiser tous les comptes ayant une session active sur le poste."
+    false_positive: "Outil de diagnostic légitime (rare en production)."
+
+  - id: R-008
+    title: "Connexion sortante vers IP/domaine C2 connu"
+    description: "Détecte une connexion réseau vers une adresse IP ou un domaine figurant dans les listes de Threat Intelligence (C2, malware, botnet)."
+    severity: critical
+    mitre_attack:
+      tactic: TA0011 - Command and Control
+      technique: T1071 - Application Layer Protocol
+    source: firewall_dns_proxy
+    condition:
+      or:
+        - dst_ip_in: "threat_intel_ioc_list"
+        - dns_query_in: "threat_intel_domain_list"
+    action: alert_and_block
+    response: "Bloquer la connexion au firewall. Identifier le poste source. Scanner avec EDR. Analyser le trafic réseau (PCAP)."
+    false_positive: "Faux positif CTI possible. Vérifier le score de l'IoC avant escalade."
+
+  # ──────────────────────────────────────────────────────
+  # DÉTECTION — Exfiltration & Mouvement de données
+  # ──────────────────────────────────────────────────────
+  - id: R-009
+    title: "Volume de données sortant anormalement élevé"
+    description: "Détecte un transfert de données sortant dépassant le seuil de 500 Mo en une heure pour un seul hôte."
+    severity: high
+    mitre_attack:
+      tactic: TA0010 - Exfiltration
+      technique: T1048 - Exfiltration Over Alternative Protocol
+    source: firewall_netflow
+    condition:
+      direction: "outbound"
+      bytes_sum: "> 524288000"  # 500 MB
+      timeframe: "1h"
+      group_by: "src_ip"
+    action: alert
+    response: "Identifier les flux de données. Vérifier si un transfert légitime est en cours (backup cloud, mise à jour). Analyser les destinations."
+    false_positive: "Backup vers cloud autorisé. Mise à jour système. Visioconférence longue durée."
+
+  - id: R-010
+    title: "Interception MQTT — client non autorisé sur le broker"
+    description: "Détecte un nouveau client MQTT se connectant au broker IoT avec un client_id non référencé dans la baseline."
+    severity: high
+    mitre_attack:
+      tactic: TA0009 - Collection (ICS)
+      technique: T0801 - Monitor Process State
+    source: mqtt_broker_logs
+    condition:
+      event: "client_connect"
+      client_id:
+        not_in: ["sensor_temp_01", "sensor_temp_02", "sensor_vib_01", "sensor_vib_02", "sensor_press_01", "scada_subscriber", "historian_01"]
+    action: alert
+    response: "Bloquer le client au niveau du broker (ACL). Identifier l'adresse IP source. Vérifier si un capteur a été remplacé."
+    false_positive: "Nouveau capteur déployé sans mise à jour de la baseline."
+
+  # ──────────────────────────────────────────────────────
+  # DÉTECTION — Sécurité physique & Caméras
+  # ──────────────────────────────────────────────────────
+  - id: R-011
+    title: "Accès SNMP/HTTP aux caméras depuis réseau IT"
+    description: "Détecte une tentative d'accès aux interfaces d'administration des caméras IP depuis un VLAN autre que le VLAN Management."
+    severity: medium
+    mitre_attack:
+      tactic: TA0007 - Discovery
+      technique: T1018 - Remote System Discovery
+    source: firewall_switch
+    condition:
+      dst_port: [80, 161, 443]
+      dst_ip_in: "camera_ip_list"
+      src_vlan:
+        not_in: [99]  # VLAN Management uniquement
+    action: alert
+    response: "Bloquer l'accès. Investiguer la source. Vérifier que les caméras ne sont pas accessibles cross-VLAN."
+    false_positive: "Technicien de maintenance utilisant le mauvais VLAN."
+
+  - id: R-012
+    title: "Tentative de clonage de badge RFID détectée"
+    description: "Détecte l'utilisation d'un badge RFID avec un identifiant dupliqué ou une tentative d'accès avec un badge non enregistré."
+    severity: high
+    mitre_attack:
+      tactic: TA0001 - Initial Access
+      technique: T0866 - Exploitation of Remote Services
+    source: access_control_rfid
+    condition:
+      or:
+        - event: "duplicate_badge_id"
+        - event: "unknown_badge_id"
+          count: ">= 3"
+          timeframe: "5m"
+    action: alert
+    response: "Verrouiller le portique concerné. Alerter la sécurité physique. Vérifier les enregistrements vidéo."
+    false_positive: "Badge défectueux. Badge visiteur non configuré."

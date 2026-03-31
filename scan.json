@@ -1,0 +1,83 @@
+{
+  "nmaprun": {
+    "scanner": "nmap",
+    "version": "7.95",
+    "args": "-sV -sC -p- --script vuln",
+    "host": {
+      "ip": "192.168.195.168",
+      "mac": "00:0C:29:1F:B2:C9",
+      "vendor": "VMware",
+      "status": "up",
+      "ports": [
+        {
+          "port": 22,
+          "protocol": "tcp",
+          "state": "open",
+          "service": {
+            "name": "ssh",
+            "product": "OpenSSH",
+            "version": "9.2p1 Debian 2+deb12u7",
+            "extrainfo": "protocol 2.0",
+            "ostype": "Linux"
+          },
+          "vulnerabilities": [
+            {
+              "id": "CVE-2023-38408",
+              "cvss": 9.8,
+              "type": "cve"
+            },
+            {
+              "id": "CVE-2023-28531",
+              "cvss": 9.8,
+              "type": "cve"
+            },
+            {
+              "id": "CVE-2024-6387",
+              "cvss": 8.1,
+              "type": "cve"
+            },
+            {
+              "id": "CVE-2025-26465",
+              "cvss": 6.8,
+              "type": "cve"
+            },
+            {
+              "id": "CVE-2023-51385",
+              "cvss": 6.5,
+              "type": "cve"
+            },
+            {
+              "id": "CVE-2023-48795",
+              "cvss": 5.9,
+              "type": "cve"
+            }
+          ],
+          "note": "Beaucoup d'exploits disponibles (GitHub, PacketStorm, etc.)"
+        },
+        {
+          "port": 1883,
+          "protocol": "tcp",
+          "state": "open",
+          "service": {
+            "name": "mqtt",
+            "product": "mosquitto",
+            "version": "2.0.11"
+          },
+          "mqtt_info": {
+            "clients_connected": 1,
+            "clients_active": 1,
+            "clients_disconnected": 2,
+            "uptime": "3740 seconds",
+            "messages_sent_1min": 2.19,
+            "messages_received_1min": 0.27
+          }
+        }
+      ]
+    },
+    "summary": {
+      "hosts_up": 1,
+      "scan_time_seconds": 35.79,
+      "status": "success"
+    }
+  }
+}
