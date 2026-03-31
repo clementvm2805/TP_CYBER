@@ -1,0 +1,30 @@
+timestamp,src_ip,dst_ip,modbus_function,register_address,register_value,plc_id,alert,description
+2026-03-15T10:55:00.000Z,10.20.20.2,10.20.20.10,3,100,46,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T11:25:00.000Z,10.20.20.2,10.20.20.10,3,100,78,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T14:32:00.000Z,10.20.20.2,10.20.20.10,3,100,47,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T15:14:00.000Z,10.20.20.2,10.20.20.10,3,200,78,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T15:45:00.000Z,10.20.20.2,10.20.20.10,3,200,2495,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T15:52:00.000Z,10.20.20.2,10.20.20.10,3,100,75,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T17:14:00.000Z,10.20.20.2,10.20.20.10,3,200,78,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T17:21:00.000Z,10.20.20.2,10.20.20.10,3,100,2500,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T17:26:00.000Z,10.20.20.2,10.20.20.10,3,300,78,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T18:02:00.000Z,10.20.20.2,10.20.20.10,3,100,46,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T18:19:00.000Z,10.20.20.2,10.20.20.10,3,100,2495,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T18:46:00.000Z,10.20.20.2,10.20.20.10,3,100,2495,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T19:05:00.000Z,10.20.20.2,10.20.20.10,3,100,47,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T19:28:00.000Z,10.20.20.2,10.20.20.10,3,100,47,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T19:37:00.000Z,10.20.20.2,10.20.20.10,3,200,78,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T20:00:00.000Z,10.20.20.2,10.20.20.10,3,300,47,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T22:30:00.000Z,10.10.10.42,10.20.20.10,6,100,9999,PLC-S7-1500-01,CRITICAL,"ALERTE: Écriture Modbus depuis IP non autorisée, valeur hors plage (registre vitesse: 9999 RPM, max autorisé: 5000 RPM)"
+2026-03-15T22:31:00.000Z,10.20.20.2,10.20.20.10,3,300,45,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-15T22:32:00.000Z,10.10.10.42,10.20.20.10,6,100,9999,PLC-S7-1500-01,CRITICAL,"ALERTE: Écriture Modbus depuis IP non autorisée, valeur hors plage (registre vitesse: 9999 RPM, max autorisé: 5000 RPM)"
+2026-03-15T22:34:00.000Z,10.10.10.42,10.20.20.10,6,100,9999,PLC-S7-1500-01,CRITICAL,"ALERTE: Écriture Modbus depuis IP non autorisée, valeur hors plage (registre vitesse: 9999 RPM, max autorisé: 5000 RPM)"
+2026-03-15T23:00:00Z,10.10.10.42,10.20.20.10,16,FIRMWARE_BLOCK,N/A,PLC-S7-1500-01,CRITICAL,ALERTE: Tentative de téléchargement de firmware vers PLC S7-1500
+2026-03-15T23:17:00.000Z,10.20.20.2,10.20.20.10,3,100,2510,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-16T00:09:00.000Z,10.20.20.2,10.20.20.10,3,300,45,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-16T00:40:00.000Z,10.20.20.2,10.20.20.10,3,300,75,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-16T02:58:00.000Z,10.20.20.2,10.20.20.10,3,100,75,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-16T04:49:00.000Z,10.20.20.2,10.20.20.10,3,300,46,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-16T06:39:00.000Z,10.20.20.2,10.20.20.10,3,300,45,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-16T07:34:00.000Z,10.20.20.2,10.20.20.10,3,200,47,PLC-S7-1500-01,none,Lecture normale registre
+2026-03-16T07:36:00.000Z,10.20.20.2,10.20.20.10,3,100,78,PLC-S7-1500-01,none,Lecture normale registre
